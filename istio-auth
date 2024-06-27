@@ -35,3 +35,99 @@ spec:
 
 
 
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: my-rest-api
+spec:
+  hosts:
+  - "my-rest-api.example.com"
+  gateways:
+  - my-rest-api-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/api"
+    route:
+    - destination:
+        host: my-rest-api
+        port:
+          number: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-rest-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-rest-api
+  template:
+    metadata:
+      labels:
+        app: my-rest-api
+    spec:
+      containers:
+      - name: my-rest-api
+        image: my-rest-api-image:latest
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-rest-api
+spec:
+  selector:
+    app: my-rest-api
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: jwt-auth
+spec:
+  selector:
+    matchLabels:
+      app: my-rest-api
+  jwtRules:
+  - issuer: "https://example.com"
+    jwksUri: "https://example.com/.well-known/jwks.json"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: my-rest-api-authz
+spec:
+  selector:
+    matchLabels:
+      app: my-rest-api
+  rules:
+  - from:
+    - source:
+        requestPrincipals: ["*"]
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: my-service-authz
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: my-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            requestPrincipals: ["*"]
+      when:
+        - key: request.auth.claims[iss]
+          values: ["https://issuer.example.com"]
+        - key: request.auth.claims[role]
+          values: ["admin", "user"]
