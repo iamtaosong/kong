@@ -169,3 +169,13 @@ spec:
         - key: request.auth.claims[role]
           values: ["admin"]
 
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-all
+  namespace: <your-namespace>
+spec:
+  selector:
+    matchLabels:
+      app: my-service
+  action: DENY
