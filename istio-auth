@@ -148,3 +148,24 @@ spec:
           values: ["https://issuer.example.com"]
         - key: request.auth.claims[role]
           values: ["admin", "user"]
+
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: my-service-authz
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: my-service
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces: ["default"]
+            requestPrincipals: ["*"]
+      when:
+        - key: request.auth.claims[role]
+          values: ["admin"]
+
